@@ -20,6 +20,7 @@ export const exams = pgTable("exams", {
   end_time: timestamp("end_time").notNull(),
   url: text("url").notNull(),
   prohibited_sites: text("prohibited_sites").array().notNull(),
+  monitored_events: jsonb("monitored_events").notNull().default([]), // New field for DOM events
 });
 
 export const registrations = pgTable("registrations", {
@@ -43,4 +44,14 @@ export const activity_logs = pgTable("activity_logs", {
   timestamp: timestamp("timestamp").notNull(),
   activity_type: text("activity_type").notNull(),
   details: jsonb("details"),
+});
+
+export const registration_codes = pgTable("registration_codes", {
+  id: serial("id").primaryKey(),
+  student_id: integer("student_id").references(() => students.id),
+  // .notNull(),
+  exam_id: integer("exam_id")
+    .references(() => exams.id)
+    .notNull(),
+  code: text("code").notNull().unique(),
 });

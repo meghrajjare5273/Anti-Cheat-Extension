@@ -8,10 +8,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { name, start_time, end_time, url, prohibited_sites } =
-    await req.json();
+  const {
+    name,
+    start_time,
+    end_time,
+    url,
+    prohibited_sites,
+    monitored_events,
+  } = await req.json();
 
-  // Convert string dates to Date objects
   const newExam = await db
     .insert(exams)
     .values({
@@ -20,6 +25,7 @@ export async function POST(req: NextRequest) {
       end_time: new Date(end_time),
       url,
       prohibited_sites,
+      monitored_events,
     })
     .returning();
 

@@ -1,10 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { students, registrations, exams } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import {
+  students,
+  registrations,
+  exams,
+  registration_codes,
+} from "@/drizzle/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
-  const { name, pc_number, exam_id } = await req.json();
+  const { name, pc_number, exam_id, code } = await req.json();
+
+  // Verify registration code - Fixed the chaining issue
+  const validCode = await db
+    .select()
+    .from(registration_codes)
+    .where(
+      and(
+        eq(registration_codes.code, code),
+        eq(registration_codes.exam_id, exam_id)
+      )
+    )
+    .limit(1);
+
+  if (validCode.length === 0) {
+    return NextResponse.json(
+      { message: "Invalid registration code" },
+      { status: 401 }
+    );
+  }
 
   // Query for existing student
   const existingStudents = await db
@@ -15,20 +39,16 @@ export async function POST(req: NextRequest) {
 
   let studentRecord;
 
-  // Handle student creation or retrieval
   if (existingStudents.length === 0) {
-    // Insert new student and get the result
     const newStudents = await db
       .insert(students)
       .values({ name, pc_number })
       .returning();
     studentRecord = newStudents[0];
   } else {
-    // Use the existing student
     studentRecord = existingStudents[0];
   }
 
-  // Now studentRecord is a single object, not an array
   const registration = await db
     .insert(registrations)
     .values({ student_id: studentRecord.id, exam_id })

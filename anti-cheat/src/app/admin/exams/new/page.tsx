@@ -8,9 +8,18 @@ export default function NewExam() {
   const [endTime, setEndTime] = useState("");
   const [url, setUrl] = useState("");
   const [prohibitedSites, setProhibitedSites] = useState("");
+  const [monitoredEvents, setMonitoredEvents] = useState(""); // New field for DOM events
   const router = useRouter();
 
   const handleSubmit = async () => {
+    const events = monitoredEvents
+      .split(";")
+      .map((event) => {
+        const [selector, eventType, action] = event.split(",");
+        return { selector, event: eventType, action };
+      })
+      .filter((e) => e.selector && e.event && e.action);
+
     const res = await fetch("/api/exams", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -20,6 +29,7 @@ export default function NewExam() {
         end_time: endTime,
         url,
         prohibited_sites: prohibitedSites.split(",").map((s) => s.trim()),
+        monitored_events: events,
       }),
     });
     if (res.ok) router.push("/admin/exams");
@@ -52,6 +62,11 @@ export default function NewExam() {
         value={prohibitedSites}
         onChange={(e) => setProhibitedSites(e.target.value)}
         placeholder="Prohibited Sites (comma-separated)"
+      />
+      <input
+        value={monitoredEvents}
+        onChange={(e) => setMonitoredEvents(e.target.value)}
+        placeholder="Monitored Events (e.g., #submit-button,click,submit_exam;)"
       />
       <button onClick={handleSubmit}>Create</button>
     </div>
