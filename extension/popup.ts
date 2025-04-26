@@ -4,7 +4,7 @@ interface Exam {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  fetch("https://your-api-url/api/exams")
+  fetch("http://localhost:3000/api/exams")
     .then((res) => res.json())
     .then((exams: Exam[]) => {
       const select = document.getElementById(
@@ -25,12 +25,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const exam_id = (
       document.getElementById("exam-select") as HTMLSelectElement
     ).value;
-    fetch("https://your-api-url/api/registrations", {
+    const code = (document.getElementById("code") as HTMLInputElement).value; // New code field
+    fetch("http://localhost:3000/api/registrations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, pc_number, exam_id: parseInt(exam_id) }),
+      body: JSON.stringify({
+        name,
+        pc_number,
+        exam_id: parseInt(exam_id),
+        code,
+      }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Registration failed");
+      })
       .then((data) => {
         chrome.storage.local.set(
           { student_id: data.student_id, registeredExams: data.exams },
@@ -38,6 +47,14 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Registered successfully");
           }
         );
-      });
+      })
+      .catch(() => alert("Registration failed"));
+  });
+
+  document.getElementById("clear-btn")!.addEventListener("click", () => {
+    chrome.storage.local.remove(["student_id", "registeredExams"], () => {
+      alert("Registration cleared");
+      window.location.reload();
+    });
   });
 });

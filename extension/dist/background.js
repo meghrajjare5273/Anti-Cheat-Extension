@@ -4,9 +4,10 @@ let studentId = null;
 let lastActiveTabId = null;
 const tabToExam = {};
 let logs = [];
-chrome.storage.local.get(["registeredExams", "student_id"], (result) => {
+chrome.storage.local.get(["registeredExams", "student_id", "pendingLogs"], (result) => {
     registeredExams = result.registeredExams || [];
     studentId = result.student_id || null;
+    logs = result.pendingLogs || [];
 });
 chrome.storage.onChanged.addListener((changes) => {
     if (changes.registeredExams)
@@ -26,6 +27,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             chrome.scripting.executeScript({
                 target: { tabId },
                 files: ["content.js"],
+            });
+            // Send monitored events to content script
+            chrome.tabs.sendMessage(tabId, {
+                type: "set_monitored_events",
+                events: activeExam.monitored_events,
             });
         }
         else {
@@ -63,20 +69,31 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     }
 });
 function logActivity(studentId, examId, type, details) {
-    logs.push({
+    const log = {
         student_id: studentId,
         exam_id: examId,
         timestamp: new Date().toISOString(),
         activity_type: type,
         details,
-    });
+    };
+    logs.push(log);
+    chrome.storage.local.set({ pendingLogs: logs });
 }
 setInterval(() => {
     if (logs.length > 0 && studentId) {
-        fetch("https://your-api-url/api/logs", {
+        fetch("http://localhost:3000/api/logs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(logs),
-        }).then(() => (logs = []));
+        })
+            .then((res) => {
+            if (res.ok) {
+                logs = [];
+                chrome.storage.local.set({ pendingLogs: logs });
+            }
+        })
+            .catch(() => {
+            console.error("Failed to send logs");
+        });
     }
-}, 30000);
+}, 3000);
